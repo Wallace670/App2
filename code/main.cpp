@@ -6,7 +6,6 @@
                             REGLAGES DES I/O
 ---------------------------------------------------------------------------*/
 
-
 DigitalIn en_1(p15);
 DigitalIn en_2(p16);
 AnalogIn ea_1(p19);
@@ -31,6 +30,7 @@ time_t seconds;
 int moyennes_ea1[2];
 int moyennes_ea2[2];
 
+Thread thread1;
 
 
 /*----------------------------------------------------------------------------
@@ -52,7 +52,6 @@ typedef struct {
 MemoryPool<event,20> deadPool;
 Queue<event,10> queueEvent;
 
-
 /*----------------------------------------------------------------------------
                              FONCTIONS UTILES
 ---------------------------------------------------------------------------*/
@@ -66,12 +65,12 @@ void date(event* addMemPool ){
 ---------------------------------------------------------------------------*/
 
 
-void lecture_analog(void const *args)
+void lecture_analog()
 {
     while (true) {
-
-		for(int i=0; i<5; i++){
-            int inputValues[2];
+        
+        int inputValues[2];
+        for(int i=0; i<5; i++){
             inputValues[0] += ea_1.read()*1000;
             inputValues[1] += ea_2.read()*1000;
             Thread::signal_wait(0x01);
@@ -81,23 +80,23 @@ void lecture_analog(void const *args)
         moyennes_ea2[0] = inputValues[1]/5;
         
         if(moyennes_ea1[0] > 125/moyennes_ea1[1])
-	  {
-	    event *alog1 = deadPool.alloc();
-	    date(alog1);
+      {
+        event *alog1 = deadPool.alloc();
+        date(alog1);
             queueEvent.put(alog1);
-	  }
+      }
 
         if(moyennes_ea2[0] > 125/moyennes_ea2[1])
-	  {
-            event alog2 = deadPool.alloc();
-	    date(&alog2);
-            queueEvent.put(&alog2);
-	  }
+      {
+            event* alog2 = deadPool.alloc();
+            date(alog2);
+            queueEvent.put(alog2);
+      }
         
         moyennes_ea1[1] = moyennes_ea1[0];
         moyennes_ea2[1] = moyennes_ea2[0];
-		
-	Thread::signal_wait(0x01);
+        
+    Thread::signal_wait(0x01);
     }
 }
 
@@ -123,24 +122,24 @@ void lecture_num(void const *args)
 void collection(void const *args)
 {
   while (true) {
-    osEvent evt = queueEvent.get()
+    osEvent evt = queueEvent.get();
       if(evt.status == osEventMessage){
-	event *addEvent= (event*)evt.value.p;
-	pritnf("%s",addEvent->date);
-	deadPool.free(addEvent);
+    event *addEvent= (event*)evt.value.p;
+    printf("%s",addEvent->date);
+    deadPool.free(addEvent);
       }
   }
 }
 
 void flipper(void)
 {
-	count ++;
-	
-	if(count = 5)
-	{
-		thread1.signal_set(0x01);
-		count = 0;
-	}
+    count ++;
+    
+    if(count == 5)
+    {
+        thread1.signal_set(0x01);
+        count = 0;
+    }
 }
 
 /*----------------------------------------------------------------------------
@@ -149,12 +148,12 @@ void flipper(void)
 
 int main()
 {
+    thread1.start(lecture_analog);
     // initialisation du RTC
     set_time(1505344428);
     seconds = time(NULL);
     //tm t = RTC::getDefaultTM();
     // démarrage des tâches
     ticker.attach(&flipper, 0.05);
-    Thread thread1(lecture_analog);
     //Thread thread2(lecture_num);
 }
