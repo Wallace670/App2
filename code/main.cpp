@@ -50,7 +50,7 @@ typedef struct {
 ---------------------------------------------------------------------------*/
 
 MemoryPool<event,20> deadPool;
-Queue<*event,10> queueEvent;
+Queue<event,10> queueEvent;
 
 
 /*----------------------------------------------------------------------------
@@ -81,23 +81,23 @@ void lecture_analog(void const *args)
         moyennes_ea2[0] = inputValues[1]/5;
         
         if(moyennes_ea1[0] > 125/moyennes_ea1[1])
-		{
-			event alog1 = deadPool.alloc();
-			date(&alog1);
-            queueEvent.put(&alog1);
-		}
+	  {
+	    event *alog1 = deadPool.alloc();
+	    date(alog1);
+            queueEvent.put(alog1);
+	  }
 
         if(moyennes_ea2[0] > 125/moyennes_ea2[1])
-		{
+	  {
             event alog2 = deadPool.alloc();
-			date(&alog2);
+	    date(&alog2);
             queueEvent.put(&alog2);
-		}
+	  }
         
         moyennes_ea1[1] = moyennes_ea1[0];
         moyennes_ea2[1] = moyennes_ea2[0];
 		
-		Thread::signal_wait(0x01);
+	Thread::signal_wait(0x01);
     }
 }
 
@@ -122,11 +122,14 @@ void lecture_num(void const *args)
 
 void collection(void const *args)
 {
-    while (true) {
-      event* addEvent= queueEvent.get();
-      pritnf("%s",*addEvent);
-      deadPool.free(addEvent);
-    }
+  while (true) {
+    osEvent evt = queueEvent.get()
+      if(evt.status == osEventMessage){
+	event *addEvent= (event*)evt.value.p;
+	pritnf("%s",addEvent->date);
+	deadPool.free(addEvent);
+      }
+  }
 }
 
 void flipper(void)
