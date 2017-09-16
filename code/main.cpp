@@ -50,7 +50,7 @@ typedef struct {
 ---------------------------------------------------------------------------*/
 
 MemoryPool<event,20> deadPool;
-Queue<event,10> queueEvent;
+Queue<*event,10> queueEvent;
 
 
 /*----------------------------------------------------------------------------
@@ -123,9 +123,9 @@ void lecture_num(void const *args)
 void collection(void const *args)
 {
     while (true) {
-      queueEvent.get();
-      
-      
+      event* addEvent= queueEvent.get();
+      pritnf("%s",*addEvent);
+      deadPool.free(addEvent);
     }
 }
 
