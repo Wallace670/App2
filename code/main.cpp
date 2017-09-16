@@ -23,7 +23,7 @@ DigitalOut led4(LED4);
 
 
 Ticker ticker;
-int tmp = 0;
+int count = 0;
 int threadCount = 0;
 int asd = 0;
 time_t seconds;
@@ -74,7 +74,7 @@ void lecture_analog(void const *args)
             int inputValues[2];
             inputValues[0] += ea_1.read()*1000;
             inputValues[1] += ea_2.read()*1000;
-            signal_wait(0x01);
+            Thread::signal_wait(0x01);
         }
         
         moyennes_ea1[0] = inputValues[0]/5;
@@ -97,7 +97,7 @@ void lecture_analog(void const *args)
         moyennes_ea1[1] = moyennes_ea1[0];
         moyennes_ea2[1] = moyennes_ea2[0];
 		
-		signal_wait(0x01);
+		Thread::signal_wait(0x01);
     }
 }
 
@@ -129,10 +129,15 @@ void collection(void const *args)
     }
 }
 
-void testAttach(void)
+void flipper(void)
 {
-    led4 = 1;
-    tmp++;
+	count ++;
+	
+	if(count = 5)
+	{
+		thread1.signal_set(0x01);
+		count = 0;
+	}
 }
 
 /*----------------------------------------------------------------------------
@@ -146,7 +151,7 @@ int main()
     seconds = time(NULL);
     //tm t = RTC::getDefaultTM();
     // démarrage des tâches
-    //ticker.attach(testAttach, 0.05);
-    //Thread thread1(lecture_analog);
+    ticker.attach(&flipper, 0.05);
+    Thread thread1(lecture_analog);
     //Thread thread2(lecture_num);
 }
