@@ -18,10 +18,10 @@ AnalogIn ea_2(p20);
 
 Ticker ticker;
 int numTriger = 1;
-int numFlag[2] = {0,0};
-int numState = 0;
-int numVal[2] = {0,0};
-int numVal_old[2] = {numVal[0],numVal[1]};
+bool numFlag[2] = {0,0};
+bool numState = 0;
+bool numVal[2] = {0,0};
+bool numVal_old[2] = {numVal[0],numVal[1]};
 int count = 0;
 time_t seconds;
 
@@ -37,11 +37,8 @@ Thread collectionthread;
                             DEFINITION DES STRUCTURES
 ---------------------------------------------------------------------------*/
 
-enum type { NUM , ANA };
-
 typedef struct {
     char date[30];
-    type TYPE;
 } event;
 
 
@@ -49,8 +46,8 @@ typedef struct {
                DEFINITION DES PROCEDES DE COMMUNICATION INTER-THRED
 ---------------------------------------------------------------------------*/
 
-MemoryPool<event,20> deadPool;
-Queue<event,10> queueEvent;
+MemoryPool<event,10> deadPool;
+Queue<event,5> queueEvent;
 
 /*----------------------------------------------------------------------------
                              FONCTIONS UTILES
@@ -169,7 +166,7 @@ void flipper(void)
         numthread.signal_set(0x1);
         numState = 0;
     } else {
-        numState++;
+        numState = !numState;
     }
 }
 
@@ -188,4 +185,6 @@ int main()
     analthread.start(lecture_analog);
     collectionthread.start(collection);
     ticker.attach(&flipper, 0.05);
+    while(true){
+        }
 }
