@@ -28,6 +28,9 @@ int threadCount = 0;
 int asd = 0;
 time_t seconds;
 
+int moyennes_ea1[2];
+int moyennes_ea2[2];
+
 
 
 /*----------------------------------------------------------------------------
@@ -67,12 +70,34 @@ void lecture_analog(void const *args)
 {
     while (true) {
 
-// synchronisation sur la période d'échantillonnage
-// lecture de l'étampe temporelle
-// lecture des échantillons analogiques
-// calcul de la nouvelle moyenne courante
-// génération éventuelle d'un événement
+		for(int i=0; i<5; i++){
+            int inputValues[2];
+            inputValues[0] += ea_1.read()*100;
+            inputValues[1] += ea_2.read()*100;
+            signal_wait(0x01);
+        }
+        
+        moyennes_ea1[0] = inputValues[0]/5;
+        moyennes_ea2[0] = inputValues[1]/5;
+        
+        if(moyennes_ea1[0] > 125/moyennes_ea1[1])
+		{
+			event alog1 = deadPool.alloc();
+			date(&alog1);
+            queueEvent.put(&alog1);
+		}
 
+        if(moyennes_ea2[0] > 125/moyennes_ea2[1])
+		{
+            event alog2 = deadPool.alloc();
+			date(&alog2);
+            queueEvent.put(&alog2);
+		}
+        
+        moyennes_ea1[1] = moyennes_ea1[0];
+        moyennes_ea2[1] = moyennes_ea2[0];
+		
+		signal_wait(0x01);
     }
 }
 
