@@ -58,6 +58,7 @@ Queue<event,10> queueEvent;
 ---------------------------------------------------------------------------*/
 
 void date(event* addMemPool ){
+	seconds = time(NULL);
     strftime(addMemPool->date, 30, "%y:%m:%d:%I:%M:%S\n", localtime(&seconds));
 }
 
