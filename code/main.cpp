@@ -72,8 +72,8 @@ void lecture_analog(void const *args)
 
 		for(int i=0; i<5; i++){
             int inputValues[2];
-            inputValues[0] += ea_1.read()*100;
-            inputValues[1] += ea_2.read()*100;
+            inputValues[0] += ea_1.read()*1000;
+            inputValues[1] += ea_2.read()*1000;
             signal_wait(0x01);
         }
         
