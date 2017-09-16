@@ -42,6 +42,13 @@ typedef struct {
 } event;
 
 
+/*----------------------------------------------------------------------------
+               DEFINITION DES PROCEDES DE COMMUNICATION INTER-THRED
+---------------------------------------------------------------------------*/
+
+MemoryPool<event,20> deadPool;
+Queue<event,10> queueEvent;
+
 
 /*----------------------------------------------------------------------------
                              FONCTIONS UTILES
@@ -85,11 +92,15 @@ void lecture_num(void const *args)
         }
     }
 }
+
+
+
 void collection(void const *args)
 {
     while (true) {
-// attente et lecture d'un événement
-// écriture de l'événement en sortie (port série)
+      queueEvent.get();
+      
+      
     }
 }
 
