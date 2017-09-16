@@ -11,26 +11,25 @@ DigitalIn en_2(p16);
 AnalogIn ea_1(p19);
 AnalogIn ea_2(p20);
 
-DigitalOut led1(LED1);
-DigitalOut led2(LED2);
-DigitalOut led3(LED3);
-DigitalOut led4(LED4);
-
 /*----------------------------------------------------------------------------
                        DECLARATION DES VARIABLE GLOBALES
 ---------------------------------------------------------------------------*/
 
 
 Ticker ticker;
+int numTriger = 1;
+int numFlag[2] = {0,0};
+int numState = 0;
+int numVal[2] = {0,0};
+int numVal_old[2] = {numVal[0],numVal[1]};
 int count = 0;
-int threadCount = 0;
-int asd = 0;
 time_t seconds;
 
 int moyennes_ea1[2] = {0.0, 0.0};
 int moyennes_ea2[2] = {0.0, 0.0};
 
-Thread thread1;
+Thread analthread;
+Thread numthread;
 Thread collectionthread;
 
 
@@ -58,7 +57,7 @@ Queue<event,10> queueEvent;
 ---------------------------------------------------------------------------*/
 
 void date(event* addMemPool ){
-	seconds = time(NULL);
+    seconds = time(NULL);
     strftime(addMemPool->date, 30, "%y:%m:%d:%I:%M:%S\n", localtime(&seconds));
 }
 
@@ -75,9 +74,9 @@ void lecture_analog()
         
         inputValues[0] = 0;
         inputValues[1] = 0;
-		
+        
         for(int i=0; i<5; i++)
-		{
+        {
             inputValues[0] += ea_1.read()*1000;
             inputValues[1] += ea_2.read()*1000;
             Thread::signal_wait(0x01);
@@ -90,7 +89,7 @@ void lecture_analog()
         if(abs(moyennes_ea1[0] - moyennes_ea1[1]) > 125)
         {
             event *alog1 = deadPool.alloc();
-			date(alog1);
+            date(alog1);
             queueEvent.put(alog1);
         }
 
@@ -104,24 +103,43 @@ void lecture_analog()
         moyennes_ea1[1] = moyennes_ea1[0];
         moyennes_ea2[1] = moyennes_ea2[0];
         
-		Thread::signal_wait(0x01);
+        Thread::signal_wait(0x01);
     }
 }
 
 
-void lecture_num(void const *args)
+void lecture_num()
 {
     while (true) {
-// synchronisation sur la période d'échantillonnage
-// lecture de l'étampe temporelle
-// lecture des échantillons numériques
-// prise en charge du phénomène de rebond
-// génération éventuelle d'un événement
-        if(en_1) {
-            led1 = 0;
-        } else {
-            led1 = 1;
+        numVal[0] = en_1;
+        numVal[1] = en_2;
+
+        if(numFlag[0]) {
+            numVal_old[0] = numVal[0];
+            numFlag[0] = 0;
+            numTriger = 1;
+            event* alog2 = deadPool.alloc();
+            date(alog2);
+            queueEvent.put(alog2);
         }
+        if(numFlag[1]) {
+            numVal_old[1] = numVal[1];
+            numFlag[1] = 0;
+            numTriger = 1;
+            event* alog2 = deadPool.alloc();
+            date(alog2);
+            queueEvent.put(alog2);
+        }
+        if(numVal_old[0] != numVal[0]) {
+            numTriger = 0;
+            numFlag[0] = 1;
+        }
+        if( numVal_old[1] != numVal[1]) {
+            numTriger = 0;
+            numFlag[1] = 1;
+        }
+        
+        numthread.signal_wait(0x1);
     }
 }
 
@@ -142,12 +160,16 @@ void collection()
 void flipper(void)
 {
     count ++;
-    
     if(count == 5)
     {
-        thread1.signal_set(0x01);
+        analthread.signal_set(0x01);
         count = 0;
-        led4 != led4;
+    }
+    if(numState == numTriger) {
+        numthread.signal_set(0x1);
+        numState = 0;
+    } else {
+        numState++;
     }
 }
 
@@ -157,15 +179,13 @@ void flipper(void)
 
 int main()
 {
-    thread1.start(lecture_analog);
-    collectionthread.start(collection);
-    led1=1;
-    led4=0;
+    
     // initialisation du RTC
     set_time(1505344428);
-    seconds = time(NULL);
-    //tm t = RTC::getDefaultTM();
+    
     // démarrage des tâches
+    numthread.start(lecture_num);
+    analthread.start(lecture_analog);
+    collectionthread.start(collection);
     ticker.attach(&flipper, 0.05);
-    //Thread thread2(lecture_num);
 }
