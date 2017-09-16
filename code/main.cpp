@@ -27,10 +27,11 @@ int threadCount = 0;
 int asd = 0;
 time_t seconds;
 
-int moyennes_ea1[2];
-int moyennes_ea2[2];
+int moyennes_ea1[2] = {0.0, 0.0};
+int moyennes_ea2[2] = {0.0, 0.0};
 
 Thread thread1;
+Thread collectionthread;
 
 
 /*----------------------------------------------------------------------------
@@ -67,10 +68,15 @@ void date(event* addMemPool ){
 
 void lecture_analog()
 {
+    int inputValues[2];
+    
     while (true) {
         
-        int inputValues[2];
-        for(int i=0; i<5; i++){
+        inputValues[0] = 0;
+        inputValues[1] = 0;
+		
+        for(int i=0; i<5; i++)
+		{
             inputValues[0] += ea_1.read()*1000;
             inputValues[1] += ea_2.read()*1000;
             Thread::signal_wait(0x01);
@@ -79,24 +85,25 @@ void lecture_analog()
         moyennes_ea1[0] = inputValues[0]/5;
         moyennes_ea2[0] = inputValues[1]/5;
         
-        if(moyennes_ea1[0] > 125/moyennes_ea1[1])
-      {
-        event *alog1 = deadPool.alloc();
-        date(alog1);
+        
+        if(abs(moyennes_ea1[0] - moyennes_ea1[1]) > 125)
+        {
+            event *alog1 = deadPool.alloc();
+			date(alog1);
             queueEvent.put(alog1);
-      }
+        }
 
-        if(moyennes_ea2[0] > 125/moyennes_ea2[1])
-      {
+        if(abs(moyennes_ea2[0] - moyennes_ea2[1]) > 125)
+        {
             event* alog2 = deadPool.alloc();
             date(alog2);
             queueEvent.put(alog2);
-      }
+        }
         
         moyennes_ea1[1] = moyennes_ea1[0];
         moyennes_ea2[1] = moyennes_ea2[0];
         
-    Thread::signal_wait(0x01);
+		Thread::signal_wait(0x01);
     }
 }
 
@@ -119,7 +126,7 @@ void lecture_num(void const *args)
 
 
 
-void collection(void const *args)
+void collection()
 {
   while (true) {
     osEvent evt = queueEvent.get();
@@ -139,6 +146,7 @@ void flipper(void)
     {
         thread1.signal_set(0x01);
         count = 0;
+        led4 != led4;
     }
 }
 
@@ -149,6 +157,9 @@ void flipper(void)
 int main()
 {
     thread1.start(lecture_analog);
+    collectionthread.start(collection);
+    led1=1;
+    led4=0;
     // initialisation du RTC
     set_time(1505344428);
     seconds = time(NULL);
