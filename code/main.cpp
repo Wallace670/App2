@@ -18,15 +18,9 @@ AnalogIn ea_2(p20);
 
 Ticker ticker;
 int numTriger = 1;
-bool numFlag[2] = {0,0};
 bool numState = 0;
-bool numVal[2] = {0,0};
-bool numVal_old[2] = {numVal[0],numVal[1]};
 int count = 0;
 time_t seconds;
-
-int moyennes_ea1[2] = {0.0, 0.0};
-int moyennes_ea2[2] = {0.0, 0.0};
 
 Thread analthread;
 Thread numthread;
@@ -66,7 +60,8 @@ void date(event* addMemPool ){
 void lecture_analog()
 {
     int inputValues[2];
-    
+    int moyennes_ea1[2] = {0.0, 0.0};
+    int moyennes_ea2[2] = {0.0, 0.0};
     while (true) {
         
         inputValues[0] = 0;
@@ -107,6 +102,9 @@ void lecture_analog()
 
 void lecture_num()
 {
+    bool numVal[2] = {0,0};
+    bool numVal_old[2] = {numVal[0],numVal[1]};
+    bool numFlag[2] = {0,0};
     while (true) {
         numVal[0] = en_1;
         numVal[1] = en_2;
