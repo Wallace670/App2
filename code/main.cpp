@@ -15,15 +15,9 @@ AnalogIn ea_2(p20);
                        DECLARATION DES VARIABLE GLOBALES
 ---------------------------------------------------------------------------*/
 
-
-Ticker ticker;
-int numTriger = 1;
-bool numState = 0;
-int count = 0;
-time_t seconds;
-
 Thread analthread;
-Thread numthread;
+Thread numthread1;
+Thread numthread2;
 Thread collectionthread;
 
 
@@ -47,8 +41,9 @@ Queue<event,5> queueEvent;
                              FONCTIONS UTILES
 ---------------------------------------------------------------------------*/
 
-void date(event* addMemPool ){
-    seconds = time(NULL);
+void date(event* addMemPool )
+{
+    time_t seconds = time(NULL);
     strftime(addMemPool->date, 30, "%y:%m:%d:%I:%M:%S\n", localtime(&seconds));
 }
 
@@ -59,82 +54,92 @@ void date(event* addMemPool ){
 
 void lecture_analog()
 {
+    int count = 1;
     int inputValues[2];
     int moyennes_ea1[2] = {0.0, 0.0};
     int moyennes_ea2[2] = {0.0, 0.0};
     while (true) {
-        
-        inputValues[0] = 0;
-        inputValues[1] = 0;
-        
-        for(int i=0; i<5; i++)
-        {
-            inputValues[0] += ea_1.read()*1000;
-            inputValues[1] += ea_2.read()*1000;
+        if(count == 5) {
+            inputValues[0] = 0;
+            inputValues[1] = 0;
+
+            for(int i=0; i<5; i++) {
+                inputValues[0] += ea_1.read()*1000;
+                inputValues[1] += ea_2.read()*1000;
+                Thread::signal_wait(0x01);
+            }
+
+            moyennes_ea1[0] = inputValues[0]/5;
+            moyennes_ea2[0] = inputValues[1]/5;
+
+
+            if(abs(moyennes_ea1[0] - moyennes_ea1[1]) > 125) {
+                event *alog1 = deadPool.alloc();
+                date(alog1);
+                queueEvent.put(alog1);
+            }
+
+            if(abs(moyennes_ea2[0] - moyennes_ea2[1]) > 125) {
+                event* alog2 = deadPool.alloc();
+                date(alog2);
+                queueEvent.put(alog2);
+            }
+
+            moyennes_ea1[1] = moyennes_ea1[0];
+            moyennes_ea2[1] = moyennes_ea2[0];
+            count = 0;
             Thread::signal_wait(0x01);
         }
-        
-        moyennes_ea1[0] = inputValues[0]/5;
-        moyennes_ea2[0] = inputValues[1]/5;
-        
-        
-        if(abs(moyennes_ea1[0] - moyennes_ea1[1]) > 125)
-        {
-            event *alog1 = deadPool.alloc();
-            date(alog1);
-            queueEvent.put(alog1);
-        }
-
-        if(abs(moyennes_ea2[0] - moyennes_ea2[1]) > 125)
-        {
-            event* alog2 = deadPool.alloc();
-            date(alog2);
-            queueEvent.put(alog2);
-        }
-        
-        moyennes_ea1[1] = moyennes_ea1[0];
-        moyennes_ea2[1] = moyennes_ea2[0];
-        
+        count++;
         Thread::signal_wait(0x01);
     }
 }
 
 
-void lecture_num()
+void lecture_num1()
 {
-    bool numVal[2] = {0,0};
-    bool numVal_old[2] = {numVal[0],numVal[1]};
-    bool numFlag[2] = {0,0};
+    bool numVal = 0;
+    bool numVal_old = numVal;
+    bool numFlag = false;
     while (true) {
-        numVal[0] = en_1;
-        numVal[1] = en_2;
-
-        if(numFlag[0]) {
-            numVal_old[0] = numVal[0];
-            numFlag[0] = 0;
-            numTriger = 1;
-            event* alog2 = deadPool.alloc();
-            date(alog2);
-            queueEvent.put(alog2);
+        if(numFlag == true) {
+            numVal = en_1;
+            if(numVal_old != numVal) {
+                Thread::signal_wait(0x1);
+                numVal = en_1;
+                if(numVal_old != numVal) {
+                    numVal_old = numVal;
+                    event* alog2 = deadPool.alloc();
+                    date(alog2);
+                    queueEvent.put(alog2);
+                }
+            }
         }
-        if(numFlag[1]) {
-            numVal_old[1] = numVal[1];
-            numFlag[1] = 0;
-            numTriger = 1;
-            event* alog2 = deadPool.alloc();
-            date(alog2);
-            queueEvent.put(alog2);
+        numFlag = !numFlag;
+        Thread::signal_wait(0x1);
+    }
+}
+void lecture_num2()
+{
+    bool numVal = 0;
+    bool numVal_old = numVal;
+    bool numFlag = false;
+    while (true) {
+        if(numFlag == true) {
+            numVal = en_2;
+            if(numVal_old != numVal) {
+                Thread::signal_wait(0x1);
+                numVal = en_2;
+                if(numVal_old != numVal) {
+                    numVal_old = numVal;
+                    event* alog2 = deadPool.alloc();
+                    date(alog2);
+                    queueEvent.put(alog2);
+                }
+            }
         }
-        if(numVal_old[0] != numVal[0]) {
-            numTriger = 0;
-            numFlag[0] = 1;
-        }
-        if( numVal_old[1] != numVal[1]) {
-            numTriger = 0;
-            numFlag[1] = 1;
-        }
-        
-        numthread.signal_wait(0x1);
+        numFlag = !numFlag;
+        Thread::signal_wait(0x1);
     }
 }
 
@@ -142,30 +147,21 @@ void lecture_num()
 
 void collection()
 {
-  while (true) {
-    osEvent evt = queueEvent.get();
-      if(evt.status == osEventMessage){
-    event *addEvent= (event*)evt.value.p;
-    printf("%s",addEvent->date);
-    deadPool.free(addEvent);
-      }
-  }
+    while (true) {
+        osEvent evt = queueEvent.get();
+        if(evt.status == osEventMessage) {
+            event *addEvent= (event*)evt.value.p;
+            printf("%s",addEvent->date);
+            deadPool.free(addEvent);
+        }
+    }
 }
 
 void flipper(void)
 {
-    count ++;
-    if(count == 5)
-    {
-        analthread.signal_set(0x01);
-        count = 0;
-    }
-    if(numState == numTriger) {
-        numthread.signal_set(0x1);
-        numState = 0;
-    } else {
-        numState = !numState;
-    }
+    analthread.signal_set(0x01);
+    numthread1.signal_set(0x1);
+    numthread2.signal_set(0x1);
 }
 
 /*----------------------------------------------------------------------------
@@ -174,15 +170,15 @@ void flipper(void)
 
 int main()
 {
-    
     // initialisation du RTC
     set_time(1505344428);
-    
     // démarrage des tâches
-    numthread.start(lecture_num);
+    numthread1.start(lecture_num1);
+    numthread2.start(lecture_num2);
     analthread.start(lecture_analog);
     collectionthread.start(collection);
+    Ticker ticker;
     ticker.attach(&flipper, 0.05);
     while(true){
-        }
+    }
 }
