@@ -47,8 +47,7 @@ Queue<event,5> queueEvent;
                              FONCTIONS UTILES
 ---------------------------------------------------------------------------*/
 
-void date(event* addMemPool )
-{
+void date(event* addMemPool ){
     seconds = time(NULL);
     strftime(addMemPool->date, 30, "%y:%m:%d:%I:%M:%S\n", localtime(&seconds));
 }
@@ -64,35 +63,38 @@ void lecture_analog()
     int moyennes_ea1[2] = {0.0, 0.0};
     int moyennes_ea2[2] = {0.0, 0.0};
     while (true) {
-
+        
         inputValues[0] = 0;
         inputValues[1] = 0;
-
-        for(int i=0; i<5; i++) {
+        
+        for(int i=0; i<5; i++)
+        {
             inputValues[0] += ea_1.read()*1000;
             inputValues[1] += ea_2.read()*1000;
             Thread::signal_wait(0x01);
         }
-
+        
         moyennes_ea1[0] = inputValues[0]/5;
         moyennes_ea2[0] = inputValues[1]/5;
-
-
-        if(abs(moyennes_ea1[0] - moyennes_ea1[1]) > 125) {
+        
+        
+        if(abs(moyennes_ea1[0] - moyennes_ea1[1]) > 125)
+        {
             event *alog1 = deadPool.alloc();
             date(alog1);
             queueEvent.put(alog1);
         }
 
-        if(abs(moyennes_ea2[0] - moyennes_ea2[1]) > 125) {
+        if(abs(moyennes_ea2[0] - moyennes_ea2[1]) > 125)
+        {
             event* alog2 = deadPool.alloc();
             date(alog2);
             queueEvent.put(alog2);
         }
-
+        
         moyennes_ea1[1] = moyennes_ea1[0];
         moyennes_ea2[1] = moyennes_ea2[0];
-
+        
         Thread::signal_wait(0x01);
     }
 }
@@ -131,7 +133,8 @@ void lecture_num()
             numTriger = 0;
             numFlag[1] = 1;
         }
-        Thread::signal_wait(0x1);
+        
+        numthread.signal_wait(0x1);
     }
 }
 
@@ -139,20 +142,21 @@ void lecture_num()
 
 void collection()
 {
-    while (true) {
-        osEvent evt = queueEvent.get();
-        if(evt.status == osEventMessage) {
-            event *addEvent= (event*)evt.value.p;
-            printf("%s",addEvent->date);
-            deadPool.free(addEvent);
-        }
-    }
+  while (true) {
+    osEvent evt = queueEvent.get();
+      if(evt.status == osEventMessage){
+    event *addEvent= (event*)evt.value.p;
+    printf("%s",addEvent->date);
+    deadPool.free(addEvent);
+      }
+  }
 }
 
 void flipper(void)
 {
     count ++;
-    if(count == 5) {
+    if(count == 5)
+    {
         analthread.signal_set(0x01);
         count = 0;
     }
@@ -170,13 +174,15 @@ void flipper(void)
 
 int main()
 {
-
+    
     // initialisation du RTC
     set_time(1505344428);
-
+    
     // démarrage des tâches
     numthread.start(lecture_num);
     analthread.start(lecture_analog);
     collectionthread.start(collection);
     ticker.attach(&flipper, 0.05);
+    while(true){
+        }
 }
