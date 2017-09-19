@@ -11,25 +11,14 @@ DigitalIn en_2(p16);
 AnalogIn ea_1(p19);
 AnalogIn ea_2(p20);
 
-DigitalOut led1(LED1);
-DigitalOut led2(LED2);
-DigitalOut led3(LED3);
-DigitalOut led4(LED4);
-
 /*----------------------------------------------------------------------------
   DECLARATION DES VARIABLE GLOBALES
   ---------------------------------------------------------------------------*/
 
 
-Ticker ticker;
-int count = 0;
-time_t seconds;
-
-int moyennes_ea1[2] = {0.0, 0.0};
-int moyennes_ea2[2] = {0.0, 0.0};
-
-Thread threadAnalog;
-Thread threadNum;
+Thread analthread;
+Thread numthread1;
+Thread numthread2;
 Thread collectionthread;
 
 
@@ -37,11 +26,8 @@ Thread collectionthread;
   DEFINITION DES STRUCTURES
   ---------------------------------------------------------------------------*/
 
-enum type { NUM , ANA };
-
 typedef struct {
-  char date[30];
-  type TYPE;
+    char date[30];
 } event;
 
 
@@ -49,16 +35,18 @@ typedef struct {
   DEFINITION DES PROCEDES DE COMMUNICATION INTER-THRED
   ---------------------------------------------------------------------------*/
 
-MemoryPool<event,20> deadPool;
-Queue<event,10> queueEvent;
+MemoryPool<event,10> deadPool;
+Queue<event,5> queueEvent;
 
 /*----------------------------------------------------------------------------
   FONCTIONS UTILES
   ---------------------------------------------------------------------------*/
 
-void date(event* addMemPool ){
-  seconds = time(NULL);
-  strftime(addMemPool->date, 30, "%y:%m:%d:%I:%M:%S\n", localtime(&seconds));
+void date(event* addMemPool )
+{
+    time_t seconds = time(NULL);
+    strftime(addMemPool->date, 30, "%y:%m:%d:%I:%M:%S\n", localtime(&seconds));
+
 }
 
 /*----------------------------------------------------------------------------
@@ -68,71 +56,94 @@ void date(event* addMemPool ){
 
 void lecture_analog()
 {
-  int inputValues[2];
-    
-  while (true) {
-        
-    inputValues[0] = 0;
-    inputValues[1] = 0;
-		
-    for(int i=0; i<5; i++)
-      {
-	inputValues[0] += ea_1.read()*1000;
-	inputValues[1] += ea_2.read()*1000;
-	Thread::signal_wait(0x01);
-      }
-        
-    moyennes_ea1[0] = inputValues[0]/5;
-    moyennes_ea2[0] = inputValues[1]/5;
-        
-        
-    if(abs(moyennes_ea1[0] - moyennes_ea1[1]) > 125)
-      {
-	event *alog1 = deadPool.alloc();
-	date(alog1);
-	queueEvent.put(alog1);
-      }
+    int count = 0;
+    int inputValues[2];
+    int moyennes_ea1[2] = {0.0, 0.0};
+    int moyennes_ea2[2] = {0.0, 0.0};
+    while (true) {
+        if(count == 4) {
+            inputValues[0] = 0;
+            inputValues[1] = 0;
 
-    if(abs(moyennes_ea2[0] - moyennes_ea2[1]) > 125)
-      {
-	event* alog2 = deadPool.alloc();
-	date(alog2);
-	queueEvent.put(alog2);
-      }
-        
-    moyennes_ea1[1] = moyennes_ea1[0];
-    moyennes_ea2[1] = moyennes_ea2[0];
-        
-    Thread::signal_wait(0x01);
-  }
-}
+            for(int i=0; i<5; i++) {
+                inputValues[0] += ea_1.read()*1000;
+                inputValues[1] += ea_2.read()*1000;
+                Thread::signal_wait(0x01);
+            }
+
+            moyennes_ea1[0] = inputValues[0]/5;
+            moyennes_ea2[0] = inputValues[1]/5;
 
 
-void lecture_num(void const *args)
+            if(abs(moyennes_ea1[0] - moyennes_ea1[1]) > 125) {
+                event *alog1 = deadPool.alloc();
+                date(alog1);
+                queueEvent.put(alog1);
+            }
+
+            if(abs(moyennes_ea2[0] - moyennes_ea2[1]) > 125) {
+                event* alog2 = deadPool.alloc();
+                date(alog2);
+                queueEvent.put(alog2);
+            }
+
+            moyennes_ea1[1] = moyennes_ea1[0];
+            moyennes_ea2[1] = moyennes_ea2[0];
+            count = 0;
+        }
+        else[
+            count++;
+        ]
+        Thread::signal_wait(0x01);
+    }
+
+
+
+
+void lecture_num1()
 {
-  int oldVal[2]={0,0};
-  int newVal[2]={0,0};
-  int trigger[2]={0,0};
-  while (true) {
-    newVal = {en_1,en_2};
-    if(newVal[0]!=oldVal[0]){
-      trigger[0]=1;
+    bool numVal = 0;
+    bool numVal_old = numVal;
+    bool numFlag = false;
+    while (true) {
+        if(numFlag == true) {
+            numVal = en_1;
+            if(numVal_old != numVal) {
+                Thread::signal_wait(0x1);
+                numVal = en_1;
+                if(numVal_old != numVal) {
+                    numVal_old = numVal;
+                    event* alog2 = deadPool.alloc();
+                    date(alog2);
+                    queueEvent.put(alog2);
+                }
+            }
+        }
+        numFlag = !numFlag;
+        Thread::signal_wait(0x1);
     }
-    if(newVal[1]!=oldVal[1]){
-      trigger[1]=1;
-    }
-    Thread::signal_wait(0x01);
-    if(trigger[1]==1 || trigger[0]==1){
-      if(trigger[1]==1 && en_2==newVal[1]){
-	event* num = deadPool.alloc();
-	date(num);
-	queueEvent.put(num);
-      }
-      if(trigger[0]==1 && en_2==newVal[0]){
-	event* num = deadPool.alloc();
-	date(num);
-	queueEvent.put(num);
-      }
+}
+void lecture_num2()
+{
+    bool numVal = 0;
+    bool numVal_old = numVal;
+    bool numFlag = false;
+    while (true) {
+        if(numFlag == true) {
+            numVal = en_2;
+            if(numVal_old != numVal) {
+                Thread::signal_wait(0x1);
+                numVal = en_2;
+                if(numVal_old != numVal) {
+                    numVal_old = numVal;
+                    event* alog2 = deadPool.alloc();
+                    date(alog2);
+                    queueEvent.put(alog2);
+                }
+            }
+        }
+        numFlag = !numFlag;
+        Thread::signal_wait(0x1);
     }
     Thread::signal_wait(0x01);
   }
@@ -142,14 +153,14 @@ void lecture_num(void const *args)
 
 void collection()
 {
-  while (true) {
-    osEvent evt = queueEvent.get();
-    if(evt.status == osEventMessage){
-      event *addEvent= (event*)evt.value.p;
-      printf("%s",addEvent->date);
-      deadPool.free(addEvent);
+    while (true) {
+        osEvent evt = queueEvent.get();
+        if(evt.status == osEventMessage) {
+            event *addEvent= (event*)evt.value.p;
+            printf("%s",addEvent->date);
+            deadPool.free(addEvent);
+        }
     }
-  }
 }
 
 
@@ -157,31 +168,9 @@ void collection()
 
 void flipper(void)
 {
-
-  //reveil du thread de lecture numérique
-  if(count%2==0){
-    threadNum.signal_set(0x01);
-  }
-
-
-  
-  if(trigger[0]){
-    threadNum.signal_set(0x02);
-    trigger[0]=false;
-  }
-  
-  if(trigger[1]){
-    threadNum.signal_set(0x04);
-    trigger[1]=false;
-  }
-
-
-  //reveil du thread de lectre analogique
-  if(count%5==0)
-    {
-      threadAnalog.signal_set(0x01);
-      count = 0;
-    }
+    analthread.signal_set(0x01);
+    numthread1.signal_set(0x1);
+    numthread2.signal_set(0x1);
 }
 
 
@@ -190,20 +179,19 @@ void flipper(void)
                                POINT D'ENTREE
 ---------------------------------------------------------------------------*/
 
-  int main()
-  {
 
-    //intitialisation des thread
-    threadAnalog.start(lecture_analog);
-    threadNum.start(lecture_numerique);
-    collectionthread.start(collection);
-    
-
+int main()
+{
     // initialisation du RTC
     set_time(1505344428);
-    seconds = time(NULL);
-    
-
-    // démarrage de l'interuption lié à la clock
+    // démarrage des tâches
+    numthread1.start(lecture_num1);
+    numthread2.start(lecture_num2);
+    analthread.start(lecture_analog);
+    collectionthread.start(collection);
+    Ticker ticker;
     ticker.attach(&flipper, 0.05);
-  }
+    while(true){
+    }
+}
+
