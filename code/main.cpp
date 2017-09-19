@@ -34,8 +34,8 @@ typedef struct {
                DEFINITION DES PROCEDES DE COMMUNICATION INTER-THRED
 ---------------------------------------------------------------------------*/
 
-MemoryPool<event,10> deadPool;
-Queue<event,5> queueEvent;
+MemoryPool<event,4> deadPool;
+Queue<event,4> queueEvent;
 
 /*----------------------------------------------------------------------------
                              FONCTIONS UTILES
@@ -89,9 +89,9 @@ void lecture_analog()
             moyennes_ea2[1] = moyennes_ea2[0];
             count = 0;
         }
-        else[
+        else{
             count++;
-        ]
+        }
         Thread::signal_wait(0x01);
     }
 }
@@ -177,6 +177,7 @@ int main()
     numthread1.start(lecture_num1);
     numthread2.start(lecture_num2);
     analthread.start(lecture_analog);
+    collectionthread.set_priority(osPriorityBelowNormal);
     collectionthread.start(collection);
     Ticker ticker;
     ticker.attach(&flipper, 0.05);
