@@ -54,12 +54,12 @@ void date(event* addMemPool )
 
 void lecture_analog()
 {
-    int count = 1;
+    int count = 0;
     int inputValues[2];
     int moyennes_ea1[2] = {0.0, 0.0};
     int moyennes_ea2[2] = {0.0, 0.0};
     while (true) {
-        if(count == 5) {
+        if(count == 4) {
             inputValues[0] = 0;
             inputValues[1] = 0;
 
@@ -88,9 +88,10 @@ void lecture_analog()
             moyennes_ea1[1] = moyennes_ea1[0];
             moyennes_ea2[1] = moyennes_ea2[0];
             count = 0;
-            Thread::signal_wait(0x01);
         }
-        count++;
+        else[
+            count++;
+        ]
         Thread::signal_wait(0x01);
     }
 }
