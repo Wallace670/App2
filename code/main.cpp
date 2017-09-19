@@ -91,11 +91,12 @@ void lecture_analog()
             moyennes_ea2[1] = moyennes_ea2[0];
             count = 0;
         }
-        else[
+        else{
             count++;
-        ]
+        }
         Thread::signal_wait(0x01);
     }
+}
 
 
 
@@ -123,6 +124,8 @@ void lecture_num1()
         Thread::signal_wait(0x1);
     }
 }
+
+
 void lecture_num2()
 {
     bool numVal = 0;
