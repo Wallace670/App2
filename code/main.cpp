@@ -184,7 +184,7 @@ void collection()
 	printf("%s , type : analogique , valeur = %lf , pin : %d \n",addEvent->date,addEvent->val,addEvent->pin);
 	deadPool.free(addEvent);
       } else {
-	if(addEvent->val<0){
+	if(addEvent->val>0){
 	  printf("%s , type : numérique , Front montant , pin : %d \n",addEvent->date,addEvent->pin);
 	}
 	else{    
